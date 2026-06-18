@@ -144,12 +144,14 @@ class WCBot(discord.Client):
 
         # Manual-override / overlap rule:
         # - First time we have a match, or no _last_match: just write it.
-        # - New match overlaps the one we last wrote: respect any manual
-        #   override the user may have set; do not overwrite.
+        # - New match overlaps the one we last wrote: only hold off if the
+        #   actual channel status no longer matches what we wrote, which means
+        #   a user manually picked a concurrent match/status. If our previous
+        #   label is still present, continue updating normally.
         # - New match does not overlap: the previous match is clearly over
         #   in the user's mind, so write the new one regardless.
         if self._last_match is not None and match is not None:
-            if wc2026.overlaps(self._last_match, match):
+            if wc2026.overlaps(self._last_match, match) and self._status_was_manually_overridden():
                 log.info(
                     "new match %s overlaps last written match %s; "
                     "leaving channel status as-is to respect manual override",
@@ -161,6 +163,14 @@ class WCBot(discord.Client):
         self._last_label = label
         self._last_match = match
         await self._apply_label(label)
+
+    def _status_was_manually_overridden(self) -> bool:
+        if self._last_label is None:
+            return False
+        channel = self.get_channel(self.voice_channel_id)
+        if channel is None:
+            return False
+        return getattr(channel, "status", None) != self._last_label[:500]
 
     async def _apply_label(self, label: str) -> None:
         channel = self.get_channel(self.voice_channel_id)
