@@ -1,9 +1,9 @@
-"""Discord bot that renames a configured voice channel to the live
+"""Discord bot that sets a configured voice channel's status to the live
 FIFA World Cup 2026 match (e.g. "UZB vs COL").
 
 Configuration (env vars / .env):
     DISCORD_TOKEN        bot token (required)
-    VOICE_CHANNEL_ID     voice channel to rename (required)
+    VOICE_CHANNEL_ID     voice channel to set status on (required)
     POLL_INTERVAL_SECONDS  how often to refresh, default 60
     MATCHES_URL          data source URL (default: openfootball)
     LIVE_WINDOW_MINUTES  how long after kickoff a match counts as live
@@ -74,9 +74,9 @@ class WCBot(discord.Client):
         self.extra_time_minutes = extra_time_minutes
         self.idle_name = idle_name
         self._matches: list[wc2026.Match] = []
-        # The label we most recently wrote to the channel (if any). Used to
-        # detect manual overrides: if the channel name no longer matches
-        # this, a user has changed it.
+        # The label we most recently wrote to the channel status (if any).
+        # Used to detect manual overrides: if the channel status no longer
+        # matches this, a user has changed it.
         self._last_label: Optional[str] = None
         # The match object behind `_last_label`, so we can compare kickoff
         # times and decide whether the new match overlaps the old one.
@@ -146,7 +146,7 @@ class WCBot(discord.Client):
             if wc2026.overlaps(self._last_match, match):
                 log.info(
                     "new match %s overlaps last written match %s; "
-                    "leaving channel name as-is to respect manual override",
+                    "leaving channel status as-is to respect manual override",
                     label,
                     self._last_label,
                 )
@@ -164,18 +164,23 @@ class WCBot(discord.Client):
         if not label:
             log.debug("no live match and no idle name configured — leaving channel as-is")
             return
-        # Discord voice channel names are capped at 100 chars; the labels we
-        # produce (e.g. "UZB vs COL") are well under that, but truncate just
-        # in case the data source ever produces a longer one.
-        new_name = label[:100]
-        if channel.name == new_name:
-            return
+        # Discord voice channel statuses are capped at 500 chars; the labels
+        # we produce (e.g. "UZB vs COL") are well under that, but truncate
+        # just in case the data source ever produces a longer one.
+        new_status = label[:500]
         try:
-            await channel.edit(name=new_name, reason="WCbot: current WC2026 match")
-        except (Forbidden, NotFound) as e:
-            log.error("cannot rename channel %s: %s", channel.id, e)
+            await channel.edit(status=new_status, reason="WCbot: current WC2026 match")
+        except Forbidden:
+            log.error(
+                "cannot set status on channel %s: missing permissions. "
+                "The bot needs SET_VOICE_CHANNEL_STATUS and, if not connected "
+                "to the channel, also MANAGE_CHANNELS",
+                channel.id,
+            )
+        except NotFound:
+            log.error("voice channel %s not found", channel.id)
         except HTTPException as e:
-            log.warning("discord API error renaming channel: %s", e)
+            log.warning("discord API error setting channel status: %s", e)
 
     async def close(self) -> None:
         self._stop.set()

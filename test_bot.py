@@ -2,7 +2,7 @@
 
 We don't connect to Discord here. Instead we patch out discord.Client
 machinery and just exercise `_refresh_once` against fake channel objects
-so we can observe the rename decisions in isolation.
+so we can observe the status-update decisions in isolation.
 """
 
 from __future__ import annotations
@@ -41,21 +41,21 @@ def _patch_fetch(matches: list[wc2026.Match]):
 
 
 class FakeChannel:
-    def __init__(self, name: str = "Voice Channel") -> None:
-        self.name = name
+    def __init__(self, status: str = "") -> None:
+        self.status = status
         self.id = 999
         self.edits: list[str] = []
-        self.history: list[str] = [name]
+        self.history: list[str] = [status]
 
-    async def edit(self, *, name: str, reason: str = "") -> None:
-        self.name = name
-        self.edits.append(name)
-        self.history.append(name)
+    async def edit(self, *, status: str, reason: str = "") -> None:
+        self.status = status
+        self.edits.append(status)
+        self.history.append(status)
 
-    def user_rename(self, new_name: str) -> None:
-        """Simulate a call user manually changing the channel name."""
-        self.name = new_name
-        self.history.append(new_name)
+    def user_set_status(self, new_status: str) -> None:
+        """Simulate a user manually changing the channel status."""
+        self.status = new_status
+        self.history.append(new_status)
 
 
 def _make_client(extra_time: int = 60) -> bot.WCBot:
@@ -90,7 +90,7 @@ def _patch_now(monkey_now: datetime):
 class BotOverrideTests(unittest.TestCase):
     def test_first_match_writes_label(self):
         client = _make_client()
-        ch = FakeChannel("Voice Channel")
+        ch = FakeChannel()
         client.get_channel = lambda _id: ch
         match = _match("2026-06-17", "20:00 UTC-6", "Uzbekistan", "Colombia", round_="Matchday 1")
         now = match.kickoff_utc
@@ -98,7 +98,7 @@ class BotOverrideTests(unittest.TestCase):
         with _patch_fetch([match]), patch("bot.wc2026.current_match", _patch_now(now)):
             asyncio.run(client._refresh_once())
 
-        self.assertEqual(ch.name, "UZB vs COL")
+        self.assertEqual(ch.status, "UZB vs COL")
         self.assertEqual(ch.edits, ["UZB vs COL"])
 
     def test_overlap_does_not_overwrite_manual_name(self):
@@ -108,8 +108,8 @@ class BotOverrideTests(unittest.TestCase):
         client._last_label = "UZB vs COL"
         client._last_match = _match("2026-06-17", "20:00 UTC-6", "Uzbekistan", "Colombia", round_="Matchday 1")
 
-        # User renames the channel to watch a different concurrent match.
-        ch.user_rename("Watching the other game")
+        # User sets a custom status on the channel.
+        ch.user_set_status("Watching the other game")
 
         # New match starts 5 minutes later -> overlaps.
         other = _match("2026-06-17", "20:05 UTC-6", "Portugal", "DR Congo", round_="Matchday 1")
@@ -118,8 +118,8 @@ class BotOverrideTests(unittest.TestCase):
         with _patch_fetch([client._last_match, other]), patch("bot.wc2026.current_match", _patch_now(now)):
             asyncio.run(client._refresh_once())
 
-        # Bot must NOT touch the user's manual rename.
-        self.assertEqual(ch.name, "Watching the other game")
+        # Bot must NOT touch the user's manual status.
+        self.assertEqual(ch.status, "Watching the other game")
         self.assertEqual(ch.edits, [])
 
     def test_non_overlapping_match_overwrites(self):
@@ -129,8 +129,8 @@ class BotOverrideTests(unittest.TestCase):
         client._last_label = "UZB vs COL"
         client._last_match = _match("2026-06-17", "20:00 UTC-6", "Uzbekistan", "Colombia", round_="Matchday 1")
 
-        # User has set a manual name; the previous match is "old" in their mind.
-        ch.user_rename("Watching the other game")
+        # User has set a manual status; the previous match is "old" in their mind.
+        ch.user_set_status("Watching the other game")
 
         # A new match kicks off 30 minutes later -> does NOT overlap (threshold 15).
         later = _match("2026-06-17", "20:30 UTC-6", "Argentina", "Algeria", round_="Matchday 1")
@@ -139,13 +139,13 @@ class BotOverrideTests(unittest.TestCase):
         with _patch_fetch([client._last_match, later]), patch("bot.wc2026.current_match", _patch_now(now)):
             asyncio.run(client._refresh_once())
 
-        # Bot SHOULD overwrite the manual rename with the new non-overlapping match.
-        self.assertEqual(ch.name, "ARG vs ALG")
+        # Bot SHOULD overwrite the manual status with the new non-overlapping match.
+        self.assertEqual(ch.status, "ARG vs ALG")
         self.assertEqual(ch.edits, ["ARG vs ALG"])
 
     def test_knockout_match_uses_extra_time_window(self):
         client = _make_client(extra_time=60)
-        ch = FakeChannel("Voice Channel")
+        ch = FakeChannel()
         client.get_channel = lambda _id: ch
         # Knockout match: R32
         r32 = wc2026.Match(
@@ -165,11 +165,11 @@ class BotOverrideTests(unittest.TestCase):
         with _patch_fetch([r32]), patch("bot.wc2026.current_match", _patch_now(now)):
             asyncio.run(client._refresh_once())
 
-        self.assertEqual(ch.name, "1A vs 2B")
+        self.assertEqual(ch.status, "1A vs 2B")
 
     def test_group_stage_match_does_not_get_extra_time(self):
         client = _make_client(extra_time=60)
-        ch = FakeChannel("Voice Channel")
+        ch = FakeChannel()
         client.get_channel = lambda _id: ch
         # Group-stage match
         m = _match("2026-06-17", "20:00 UTC-6", "Uzbekistan", "Colombia", round_="Matchday 7")
@@ -180,7 +180,7 @@ class BotOverrideTests(unittest.TestCase):
             asyncio.run(client._refresh_once())
 
         # Should NOT be live -> no edit.
-        self.assertEqual(ch.name, "Voice Channel")
+        self.assertEqual(ch.status, "")
         self.assertEqual(ch.edits, [])
 
 
