@@ -146,6 +146,26 @@ class BotOverrideTests(unittest.TestCase):
         self.assertEqual(ch.status, arg_alg_label)
         self.assertEqual(ch.edits, [arg_alg_label])
 
+    def test_overlap_updates_when_previous_bot_status_is_still_present(self):
+        client = _make_client()
+        uzb_col_label = "UZB \U0001F1FA\U0001F1FF vs \U0001F1E8\U0001F1F4 COL"
+        ch = FakeChannel(uzb_col_label)
+        client.get_channel = lambda _id: ch
+        client._last_label = uzb_col_label
+        client._last_match = _match("2026-06-17", "20:00 UTC-6", "Uzbekistan", "Colombia", round_="Matchday 1")
+
+        # New match starts 5 minutes later -> overlaps, but nobody manually
+        # changed the bot's previous status, so the bot should still update.
+        other = _match("2026-06-17", "20:05 UTC-6", "Portugal", "DR Congo", round_="Matchday 1")
+        now = other.kickoff_utc + _td(minutes=10)
+
+        with _patch_fetch([client._last_match, other]), patch("bot.wc2026.current_match", _patch_now(now)):
+            asyncio.run(client._refresh_once())
+
+        por_cod_label = "POR \U0001F1F5\U0001F1F9 vs \U0001F1E8\U0001F1E9 COD"
+        self.assertEqual(ch.status, por_cod_label)
+        self.assertEqual(ch.edits, [por_cod_label])
+
     def test_knockout_match_uses_extra_time_window(self):
         client = _make_client(extra_time=60)
         ch = FakeChannel()
