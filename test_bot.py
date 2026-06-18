@@ -67,6 +67,7 @@ def _make_client(extra_time: int = 60) -> bot.WCBot:
         extra_time_minutes=extra_time,
         idle_name="",
     )
+    client.is_ready = lambda: True
     return client
 
 

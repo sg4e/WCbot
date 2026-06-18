@@ -121,6 +121,8 @@ class WCBot(discord.Client):
                 pass
 
     async def _refresh_once(self) -> None:
+        if not self.is_ready():
+            return
         # Re-download the schedule so we pick up knockout-round winners as
         # the tournament progresses.
         matches = await asyncio.to_thread(wc2026.fetch_matches, self.matches_url)
