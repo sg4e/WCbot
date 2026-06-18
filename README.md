@@ -40,7 +40,7 @@ cp .env.example .env
 | `MATCHES_URL`          | `https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json` | JSON schedule. Override with a local file path for offline use.                                          |
 | `LIVE_WINDOW_MINUTES`  | `130`                                                                  | How long after kickoff a match counts as "live" (90 min + ~15 halftime + ~25 stoppage/extra time).       |
 | `EXTRA_TIME_MINUTES`   | `60`                                                                   | Extra time added to the live window for elimination rounds (Round of 32 onward) for extra time + penalties. |
-| `IDLE_NAME`            | `""`                                                                   | Channel name to show when no match is live. Empty = leave the channel name as-is between matches.        |
+| `IDLE_NAME`            | `""`                                                                   | Channel name to show when no match is live. Empty = show `Waiting for {next match}` (e.g. `Waiting for UZB 🇺🇿 vs 🇨🇴 COL`), or leave the channel as-is if no upcoming match is scheduled. |
 
 ## How "currently being played" is determined
 
