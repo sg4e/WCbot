@@ -132,7 +132,13 @@ class WCBot(discord.Client):
             live_window_minutes=self.live_window_minutes,
             extra_time_minutes=self.extra_time_minutes,
         )
-        label = match.status_label if match else self.idle_name
+        if match:
+            label = match.status_label
+        elif self.idle_name:
+            label = self.idle_name
+        else:
+            nm = wc2026.next_match(matches)
+            label = f"Waiting for {nm.status_label}" if nm else ""
         if label == self._last_label:
             return  # nothing changed — skip the API call
 
