@@ -233,7 +233,7 @@ class TeamCodeTests(unittest.TestCase):
             team1="Uzbekistan", team2="Colombia", group="Group K",
             kickoff_utc=ko, has_final_score=False,
         )
-        self.assertEqual(m.status_label, "UZB vs COL")
+        self.assertEqual(m.status_label, "UZB \U0001F1FA\U0001F1FF vs \U0001F1E8\U0001F1F4 COL")
 
     def test_all_48_qualified_teams_have_codes(self):
         # Sanity check that every full team name in our map resolves to a
@@ -278,7 +278,7 @@ class FetchTests(unittest.TestCase):
             None,
         )
         self.assertIsNotNone(target, "UZB vs COL match missing from schedule")
-        self.assertEqual(target.status_label, "UZB vs COL")
+        self.assertEqual(target.status_label, "UZB \U0001F1FA\U0001F1FF vs \U0001F1E8\U0001F1F4 COL")
         self.assertEqual(
             target.kickoff_utc,
             datetime(2026, 6, 18, 2, 0, tzinfo=timezone.utc),

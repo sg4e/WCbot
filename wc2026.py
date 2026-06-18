@@ -79,6 +79,71 @@ TEAM_CODES: dict[str, str] = {
     "Panama": "PAN",
 }
 
+# ISO 3166-1 alpha-2 codes for flag emoji generation.
+_TEAM_ALPHA2: dict[str, str] = {
+    "Mexico": "MX",
+    "South Africa": "ZA",
+    "South Korea": "KR",
+    "Czech Republic": "CZ",
+    "Canada": "CA",
+    "Bosnia & Herzegovina": "BA",
+    "Qatar": "QA",
+    "Switzerland": "CH",
+    "Brazil": "BR",
+    "Morocco": "MA",
+    "Haiti": "HT",
+    "USA": "US",
+    "Paraguay": "PY",
+    "Australia": "AU",
+    "Turkey": "TR",
+    "Germany": "DE",
+    "Curaçao": "CW",
+    "Ivory Coast": "CI",
+    "Ecuador": "EC",
+    "Netherlands": "NL",
+    "Japan": "JP",
+    "Sweden": "SE",
+    "Tunisia": "TN",
+    "Belgium": "BE",
+    "Egypt": "EG",
+    "Iran": "IR",
+    "New Zealand": "NZ",
+    "Spain": "ES",
+    "Cape Verde": "CV",
+    "Saudi Arabia": "SA",
+    "Uruguay": "UY",
+    "France": "FR",
+    "Senegal": "SN",
+    "Iraq": "IQ",
+    "Norway": "NO",
+    "Argentina": "AR",
+    "Algeria": "DZ",
+    "Austria": "AT",
+    "Jordan": "JO",
+    "Portugal": "PT",
+    "DR Congo": "CD",
+    "Uzbekistan": "UZ",
+    "Colombia": "CO",
+    "Croatia": "HR",
+    "Ghana": "GH",
+    "Panama": "PA",
+}
+
+# Build the full flag dict: regional indicator flags for ISO countries,
+# subdivision tag-sequence flags for constituent countries.
+_FLAGS: dict[str, str] = {
+    name: chr(0x1F1E6 + ord(a2[0]) - 65) + chr(0x1F1E6 + ord(a2[1]) - 65)
+    for name, a2 in _TEAM_ALPHA2.items()
+} | {
+    "England": "\U0001F3F4\U0000E0067\U0000E0062\U0000E0065\U0000E006E\U0000E0067\U0000E007F",
+    "Scotland": "\U0001F3F4\U0000E0067\U0000E0062\U0000E0073\U0000E0063\U0000E0074\U0000E007F",
+}
+
+
+def _flag_emoji(team_name: str) -> str:
+    return _FLAGS.get(team_name, "")
+
+
 # Matches in the knockout rounds use placeholder names like "1A", "W74", "2B/3C"
 # — there's no real team to show until those slots are filled. We use a short,
 # neutral label so the channel name stays informative.
@@ -128,7 +193,10 @@ class Match:
 
     @property
     def status_label(self) -> str:
-        return f"{self.code1} vs {self.code2}"
+        f1, f2 = _flag_emoji(self.team1), _flag_emoji(self.team2)
+        left = f"{self.code1} {f1}" if f1 else self.code1
+        right = f"{f2} {self.code2}" if f2 else self.code2
+        return f"{left} vs {right}"
 
 
 # "20:00 UTC-6" / "12:00 UTC-4" / "19:00 UTC+1" -> tz offset in minutes

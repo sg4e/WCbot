@@ -98,14 +98,15 @@ class BotOverrideTests(unittest.TestCase):
         with _patch_fetch([match]), patch("bot.wc2026.current_match", _patch_now(now)):
             asyncio.run(client._refresh_once())
 
-        self.assertEqual(ch.status, "UZB vs COL")
-        self.assertEqual(ch.edits, ["UZB vs COL"])
+        self.assertEqual(ch.status, "UZB \U0001F1FA\U0001F1FF vs \U0001F1E8\U0001F1F4 COL")
+        self.assertEqual(ch.edits, ["UZB \U0001F1FA\U0001F1FF vs \U0001F1E8\U0001F1F4 COL"])
 
     def test_overlap_does_not_overwrite_manual_name(self):
         client = _make_client()
-        ch = FakeChannel("UZB vs COL")
+        uzb_col_label = "UZB \U0001F1FA\U0001F1FF vs \U0001F1E8\U0001F1F4 COL"
+        ch = FakeChannel(uzb_col_label)
         client.get_channel = lambda _id: ch
-        client._last_label = "UZB vs COL"
+        client._last_label = uzb_col_label
         client._last_match = _match("2026-06-17", "20:00 UTC-6", "Uzbekistan", "Colombia", round_="Matchday 1")
 
         # User sets a custom status on the channel.
@@ -124,9 +125,10 @@ class BotOverrideTests(unittest.TestCase):
 
     def test_non_overlapping_match_overwrites(self):
         client = _make_client()
-        ch = FakeChannel("UZB vs COL")
+        uzb_col_label = "UZB \U0001F1FA\U0001F1FF vs \U0001F1E8\U0001F1F4 COL"
+        ch = FakeChannel(uzb_col_label)
         client.get_channel = lambda _id: ch
-        client._last_label = "UZB vs COL"
+        client._last_label = uzb_col_label
         client._last_match = _match("2026-06-17", "20:00 UTC-6", "Uzbekistan", "Colombia", round_="Matchday 1")
 
         # User has set a manual status; the previous match is "old" in their mind.
@@ -140,8 +142,9 @@ class BotOverrideTests(unittest.TestCase):
             asyncio.run(client._refresh_once())
 
         # Bot SHOULD overwrite the manual status with the new non-overlapping match.
-        self.assertEqual(ch.status, "ARG vs ALG")
-        self.assertEqual(ch.edits, ["ARG vs ALG"])
+        arg_alg_label = "ARG \U0001F1E6\U0001F1F7 vs \U0001F1E9\U0001F1FF ALG"
+        self.assertEqual(ch.status, arg_alg_label)
+        self.assertEqual(ch.edits, [arg_alg_label])
 
     def test_knockout_match_uses_extra_time_window(self):
         client = _make_client(extra_time=60)
