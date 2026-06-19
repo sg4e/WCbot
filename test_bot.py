@@ -190,6 +190,51 @@ class BotOverrideTests(unittest.TestCase):
 
         self.assertEqual(ch.status, "1A vs 2B")
 
+    def test_status_reapplied_after_discord_clears_it(self):
+        """When all members leave the voice call, Discord automatically clears
+        the channel status.  The bot must re-apply its label on the next poll
+        even though the computed label hasn't changed.
+        """
+        client = _make_client()
+        ch = FakeChannel()
+        client.get_channel = lambda _id: ch
+        waiting_label = "Waiting for UZB \U0001F1FA\U0001F1FF vs \U0001F1E8\U0001F1F4 COL"
+        match = _match("2026-06-17", "20:00 UTC-6", "Uzbekistan", "Colombia", round_="Matchday 1")
+        now = match.kickoff_utc - _td(minutes=30)
+
+        # Pin `now` so current_match returns None (pre-kickoff) but
+        # next_match still sees the match as upcoming.
+        _real_next = wc2026.next_match
+        pinned_now = now
+        def _fixed_next(matches, now=None):
+            return _real_next(matches, now=pinned_now)
+
+        # First poll — bot writes the "Waiting for..." status.
+        with (
+            _patch_fetch([match]),
+            patch("bot.wc2026.current_match", _patch_now(now)),
+            patch("bot.wc2026.next_match", _fixed_next),
+        ):
+            asyncio.run(client._refresh_once())
+
+        self.assertEqual(ch.status, waiting_label)
+        self.assertEqual(client._last_label, waiting_label)
+
+        # Simulate Discord clearing the channel status when everyone leaves.
+        ch.status = ""
+
+        # Second poll — same label would be computed, but the channel status
+        # is now empty.  The bot must re-apply.
+        with (
+            _patch_fetch([match]),
+            patch("bot.wc2026.current_match", _patch_now(now)),
+            patch("bot.wc2026.next_match", _fixed_next),
+        ):
+            asyncio.run(client._refresh_once())
+
+        self.assertEqual(ch.status, waiting_label)
+        self.assertEqual(ch.edits, [waiting_label, waiting_label])
+
     def test_group_stage_match_does_not_get_extra_time(self):
         client = _make_client(extra_time=60)
         ch = FakeChannel()

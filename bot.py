@@ -139,7 +139,9 @@ class WCBot(discord.Client):
         else:
             nm = wc2026.next_match(matches)
             label = f"Waiting for {nm.status_label}" if nm else ""
-        if label == self._last_label:
+        channel = self.get_channel(self.voice_channel_id)
+        channel_status = getattr(channel, "status", None) if channel else None
+        if label == self._last_label and channel_status == self._last_label[:500]:
             return  # nothing changed — skip the API call
 
         # Manual-override / overlap rule:
