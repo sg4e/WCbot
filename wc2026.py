@@ -130,13 +130,13 @@ _TEAM_ALPHA2: dict[str, str] = {
 }
 
 # Build the full flag dict: regional indicator flags for ISO countries,
-# subdivision tag-sequence flags for constituent countries.
+# Discord emoji codes for constituent countries (Scotland, England).
 _FLAGS: dict[str, str] = {
     name: chr(0x1F1E6 + ord(a2[0]) - 65) + chr(0x1F1E6 + ord(a2[1]) - 65)
     for name, a2 in _TEAM_ALPHA2.items()
 } | {
-    "England": "\U0001F3F4\U0000E0067\U0000E0062\U0000E0065\U0000E006E\U0000E0067\U0000E007F",
-    "Scotland": "\U0001F3F4\U0000E0067\U0000E0062\U0000E0073\U0000E0063\U0000E0074\U0000E007F",
+    "England": ":england:",
+    "Scotland": ":scotland:",
 }
 
 

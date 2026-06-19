@@ -6,6 +6,11 @@ All notable changes to this project are documented in this file.
 
 ### Fixed
 
+- **Scotland and England flags now use Discord emoji codes instead of Unicode subdivision tag sequences.**
+  The subdivision tag sequences (`🏴󠁧󠁢󠁳󠁣󠁴󠁿` / `🏴󠁧󠁢󠁥󠁮󠁧󠁿`) rendered poorly on Discord — Scotland showed
+  as `SCO 🏴72334F` on some clients. Changed to `:scotland:` and `:england:` emoji
+  codes which Discord renders correctly.
+
 - **Manual-override detection always triggered after first status write.**
   `VoiceChannel` in discord.py does not expose `status` as a cached
   attribute (`_update()` never parses it), so `getattr(channel, "status", None)`
