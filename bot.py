@@ -139,8 +139,7 @@ class WCBot(discord.Client):
         else:
             nm = wc2026.next_match(matches)
             label = f"Waiting for {nm.status_label}" if nm else ""
-        channel = self.get_channel(self.voice_channel_id)
-        channel_status = getattr(channel, "status", None) if channel else None
+        channel_status = await self._get_channel_status()
         if label == self._last_label and channel_status == self._last_label[:500]:
             return  # nothing changed — skip the API call
 
@@ -153,7 +152,7 @@ class WCBot(discord.Client):
         # - New match does not overlap: the previous match is clearly over
         #   in the user's mind, so write the new one regardless.
         if self._last_match is not None and match is not None:
-            if wc2026.overlaps(self._last_match, match) and self._status_was_manually_overridden():
+            if wc2026.overlaps(self._last_match, match) and self._status_was_manually_overridden(channel_status):
                 log.info(
                     "new match %s overlaps last written match %s; "
                     "leaving channel status as-is to respect manual override",
@@ -166,13 +165,23 @@ class WCBot(discord.Client):
         self._last_match = match
         await self._apply_label(label)
 
-    def _status_was_manually_overridden(self) -> bool:
+    async def _get_channel_status(self) -> Optional[str]:
+        """Fetch the voice channel's current status via the raw HTTP API.
+
+        discord.py's VoiceChannel model does not expose ``status`` as a cached
+        attribute, so we bypass the model and read the field directly from the
+        API response.
+        """
+        try:
+            data = await self.http.get_channel(self.voice_channel_id)
+        except (HTTPException, NotFound):
+            return None
+        return data.get("status") if isinstance(data, dict) else None
+
+    def _status_was_manually_overridden(self, channel_status: Optional[str]) -> bool:
         if self._last_label is None:
             return False
-        channel = self.get_channel(self.voice_channel_id)
-        if channel is None:
-            return False
-        return getattr(channel, "status", None) != self._last_label[:500]
+        return channel_status != self._last_label[:500]
 
     async def _apply_label(self, label: str) -> None:
         channel = self.get_channel(self.voice_channel_id)

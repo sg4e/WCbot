@@ -71,6 +71,16 @@ def _make_client(extra_time: int = 60) -> bot.WCBot:
     return client
 
 
+def _bind_channel(client: bot.WCBot, ch: FakeChannel) -> None:
+    """Wire a FakeChannel into the bot for both cached access and status reads."""
+    client.get_channel = lambda _id: ch
+
+    async def _fake_get_status():
+        return ch.status
+
+    client._get_channel_status = _fake_get_status
+
+
 def _patch_now(monkey_now: datetime):
     """Return a context-manager-friendly stub of wc2026.current_match whose
     `now` defaults to `monkey_now` if the caller didn't pass one.
@@ -91,7 +101,7 @@ class BotOverrideTests(unittest.TestCase):
     def test_first_match_writes_label(self):
         client = _make_client()
         ch = FakeChannel()
-        client.get_channel = lambda _id: ch
+        _bind_channel(client, ch)
         match = _match("2026-06-17", "20:00 UTC-6", "Uzbekistan", "Colombia", round_="Matchday 1")
         now = match.kickoff_utc
 
@@ -105,7 +115,7 @@ class BotOverrideTests(unittest.TestCase):
         client = _make_client()
         uzb_col_label = "UZB \U0001F1FA\U0001F1FF vs \U0001F1E8\U0001F1F4 COL"
         ch = FakeChannel(uzb_col_label)
-        client.get_channel = lambda _id: ch
+        _bind_channel(client, ch)
         client._last_label = uzb_col_label
         client._last_match = _match("2026-06-17", "20:00 UTC-6", "Uzbekistan", "Colombia", round_="Matchday 1")
 
@@ -127,7 +137,7 @@ class BotOverrideTests(unittest.TestCase):
         client = _make_client()
         uzb_col_label = "UZB \U0001F1FA\U0001F1FF vs \U0001F1E8\U0001F1F4 COL"
         ch = FakeChannel(uzb_col_label)
-        client.get_channel = lambda _id: ch
+        _bind_channel(client, ch)
         client._last_label = uzb_col_label
         client._last_match = _match("2026-06-17", "20:00 UTC-6", "Uzbekistan", "Colombia", round_="Matchday 1")
 
@@ -150,7 +160,7 @@ class BotOverrideTests(unittest.TestCase):
         client = _make_client()
         uzb_col_label = "UZB \U0001F1FA\U0001F1FF vs \U0001F1E8\U0001F1F4 COL"
         ch = FakeChannel(uzb_col_label)
-        client.get_channel = lambda _id: ch
+        _bind_channel(client, ch)
         client._last_label = uzb_col_label
         client._last_match = _match("2026-06-17", "20:00 UTC-6", "Uzbekistan", "Colombia", round_="Matchday 1")
 
@@ -169,7 +179,7 @@ class BotOverrideTests(unittest.TestCase):
     def test_knockout_match_uses_extra_time_window(self):
         client = _make_client(extra_time=60)
         ch = FakeChannel()
-        client.get_channel = lambda _id: ch
+        _bind_channel(client, ch)
         # Knockout match: R32
         r32 = wc2026.Match(
             round="Round of 32",
@@ -197,7 +207,7 @@ class BotOverrideTests(unittest.TestCase):
         """
         client = _make_client()
         ch = FakeChannel()
-        client.get_channel = lambda _id: ch
+        _bind_channel(client, ch)
         waiting_label = "Waiting for UZB \U0001F1FA\U0001F1FF vs \U0001F1E8\U0001F1F4 COL"
         match = _match("2026-06-17", "20:00 UTC-6", "Uzbekistan", "Colombia", round_="Matchday 1")
         now = match.kickoff_utc - _td(minutes=30)
@@ -238,7 +248,7 @@ class BotOverrideTests(unittest.TestCase):
     def test_group_stage_match_does_not_get_extra_time(self):
         client = _make_client(extra_time=60)
         ch = FakeChannel()
-        client.get_channel = lambda _id: ch
+        _bind_channel(client, ch)
         # Group-stage match
         m = _match("2026-06-17", "20:00 UTC-6", "Uzbekistan", "Colombia", round_="Matchday 7")
         # 150 min after kickoff: outside the 130-min group-stage window.

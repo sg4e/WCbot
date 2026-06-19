@@ -67,6 +67,11 @@ class ReproTests(unittest.TestCase):
         ch = FakeChannel()
         client.get_channel = lambda _id: ch
 
+        async def _fake_get_status():
+            return ch.status
+
+        client._get_channel_status = _fake_get_status
+
         m1 = _match("2026-06-17", "20:00 UTC-6", "Uzbekistan", "Colombia", round_="Matchday 1")
         m2 = _match("2026-06-17", "23:00 UTC-6", "Argentina", "Algeria", round_="Matchday 1")
 
