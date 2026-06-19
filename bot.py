@@ -138,7 +138,7 @@ class WCBot(discord.Client):
             label = self.idle_name
         else:
             nm = wc2026.next_match(matches)
-            label = f"Waiting for {nm.status_label}" if nm else ""
+            label = f"Waiting for {nm.status_label} <t:{int(nm.kickoff_utc.timestamp())}:t>" if nm else ""
         channel_status = await self._get_channel_status()
         if label == self._last_label and channel_status == self._last_label[:500]:
             return  # nothing changed — skip the API call

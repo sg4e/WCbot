@@ -208,8 +208,9 @@ class BotOverrideTests(unittest.TestCase):
         client = _make_client()
         ch = FakeChannel()
         _bind_channel(client, ch)
-        waiting_label = "Waiting for UZB \U0001F1FA\U0001F1FF vs \U0001F1E8\U0001F1F4 COL"
         match = _match("2026-06-17", "20:00 UTC-6", "Uzbekistan", "Colombia", round_="Matchday 1")
+        ts = int(match.kickoff_utc.timestamp())
+        waiting_label = f"Waiting for UZB \U0001F1FA\U0001F1FF vs \U0001F1E8\U0001F1F4 COL <t:{ts}:t>"
         now = match.kickoff_utc - _td(minutes=30)
 
         # Pin `now` so current_match returns None (pre-kickoff) but

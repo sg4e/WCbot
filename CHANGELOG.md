@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **"Waiting for" statuses now include the next match kickoff time as a Discord-formattable timestamp.**
+  When no match is live, the channel status shows something like
+  `Waiting for UZB 🇺🇿 vs 🇨🇴 COL <t:1781316000:t>` so users can see at a glance
+  when the next match starts.
+
 ### Fixed
 
 - **Scotland and England flags now use Discord emoji codes instead of Unicode subdivision tag sequences.**
