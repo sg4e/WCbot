@@ -40,24 +40,27 @@ cp .env.example .env
 | `MATCHES_URL`          | `https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json` | JSON schedule. Override with a local file path for offline use.                                          |
 | `LIVE_WINDOW_MINUTES`  | `130`                                                                  | How long after kickoff a match counts as "live" (90 min + ~15 halftime + ~25 stoppage/extra time).       |
 | `EXTRA_TIME_MINUTES`   | `60`                                                                   | Extra time added to the live window for elimination rounds (Round of 32 onward) for extra time + penalties. |
-| `IDLE_NAME`            | `""`                                                                   | Channel name to show when no match is live. Empty = show `Waiting for {next match}` (e.g. `Waiting for UZB 🇺🇿 vs 🇨🇴 COL`), or leave the channel as-is if no upcoming match is scheduled. |
 
 ## How "currently being played" is determined
 
 A match is considered live from its kickoff (in UTC) to
 `kickoff + LIVE_WINDOW_MINUTES` (plus `EXTRA_TIME_MINUTES` for elimination
-rounds, to cover extra time and penalties). If two matches overlap
-(e.g. simultaneous kickoffs in different time zones), the most-recently-
-kicked-off one wins. Matches with a final score set in the source JSON are
-always treated as finished, regardless of the wall-clock time.
+rounds, to cover extra time and penalties). If one match is live, the bot uses the existing single-match status template.
+If two or more live matches kick off within 15 minutes of each other, the bot
+uses a compact multi-match status separated by ` | `, such as
+`UZB 🇺🇿 vs 🇨🇴 COL | POR 🇵🇹 vs 🇨🇩 COD`. Matches with a final score set in the
+source JSON are always treated as finished, regardless of the wall-clock time.
 
-## Respecting manual channel-name overrides
+## Channel status ownership
 
-If two matches are kicking off within 15 minutes of each other, the bot
-will *not* overwrite the channel name once a label is already on the
-channel. This lets call users rename the channel to whichever concurrent
-match they're actually watching without the bot clobbering it back. Once
-a non-overlapping match starts, the bot will write the new label as usual.
+The bot owns the configured voice channel status. It overwrites manually-set
+statuses whenever the schedule-derived status changes, re-applies its status if
+Discord clears it, and clears the status when there is no live or upcoming
+match. When no match is live but a match is scheduled, the bot shows the
+existing `Waiting for {next match} <t:...:t>` template. If the next scheduled
+matches overlap, the timestamp moves to the front and the status omits
+`Waiting for`, for example
+`<t:1781316000:t>: UZB 🇺🇿 vs 🇨🇴 COL | POR 🇵🇹 vs 🇨🇩 COD`.
 
 The dataset is community-updated rather than fully live (the upstream text is
 edited by hand), so very fresh in-progress goals may take a few minutes to
@@ -70,4 +73,5 @@ appear. Use the env vars above to tune polling to taste.
 ```
 
 The tests cover time-offset parsing, current-match detection, overlap
-resolution, team-code mapping, and a live fetch against the openfootball URL.
+resolution and formatting, team-code mapping, and a live fetch against the
+openfootball URL.

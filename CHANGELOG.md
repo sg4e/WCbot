@@ -6,10 +6,21 @@ All notable changes to this project are documented in this file.
 
 ### Added
 
+- Added compact ` | `-separated status labels for overlapping live matches and
+  timestamp-first waiting labels for overlapping upcoming matches so concurrent
+  fixtures fit better in Discord's voice channel status UI.
+
 - **"Waiting for" statuses now include the next match kickoff time as a Discord-formattable timestamp.**
   When no match is live, the channel status shows something like
   `Waiting for UZB 🇺🇿 vs 🇨🇴 COL <t:1781316000:t>` so users can see at a glance
   when the next match starts.
+
+### Changed
+
+- Removed optional idle-message support and manual-override preservation. The
+  bot now owns the configured voice channel status, overwrites manual status
+  changes as needed, and clears the status when there are no live or upcoming
+  matches.
 
 ### Fixed
 

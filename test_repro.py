@@ -43,13 +43,21 @@ def _patch_fetch(matches):
     )
 
 
-def _patch_now(t):
-    real = wc2026.current_match
+def _patch_status_time(t):
+    real_live = wc2026.live_matches
+    real_upcoming = wc2026.upcoming_matches
 
-    def wrap(matches, *, now=None, **kw):
-        return real(matches, now=now or t, **kw)
+    def live_wrap(matches, *, now=None, **kw):
+        return real_live(matches, now=now or t, **kw)
 
-    return wrap
+    def upcoming_wrap(matches, now=None):
+        return real_upcoming(matches, now=now or t)
+
+    return patch.multiple(
+        "bot.wc2026",
+        live_matches=live_wrap,
+        upcoming_matches=upcoming_wrap,
+    )
 
 
 class ReproTests(unittest.TestCase):
@@ -61,7 +69,6 @@ class ReproTests(unittest.TestCase):
             poll_interval=60.0,
             live_window_minutes=130,
             extra_time_minutes=60,
-            idle_name="",
         )
         client.is_ready = lambda: True
         ch = FakeChannel()
@@ -76,15 +83,15 @@ class ReproTests(unittest.TestCase):
         m2 = _match("2026-06-17", "23:00 UTC-6", "Argentina", "Algeria", round_="Matchday 1")
 
         # Tick 1: M1 live at minute 10
-        with _patch_fetch([m1, m2]), patch("bot.wc2026.current_match", _patch_now(m1.kickoff_utc + timedelta(minutes=10))):
+        with _patch_fetch([m1, m2]), _patch_status_time(m1.kickoff_utc + timedelta(minutes=10)):
             asyncio.run(client._refresh_once())
         log.warning("TICK1: ch.status=%r, _last_label=%r", ch.status, client._last_label)
         self.assertEqual(ch.edits, ["UZB \U0001F1FA\U0001F1FF vs \U0001F1E8\U0001F1F4 COL"])
 
         # Tick 2: M1 still live at minute 60
-        with _patch_fetch([m1, m2]), patch("bot.wc2026.current_match", _patch_now(m1.kickoff_utc + timedelta(minutes=60))):
+        with _patch_fetch([m1, m2]), _patch_status_time(m1.kickoff_utc + timedelta(minutes=60)):
             asyncio.run(client._refresh_once())
-        log.warning("TICK2: ch.status=%r, _last_label=%r, _last_match=%s", ch.status, client._last_label, client._last_match)
+        log.warning("TICK2: ch.status=%r, _last_label=%r", ch.status, client._last_label)
 
         # Tick 3: M1 ended (140 min in), M2 not yet live (kicks off at 180 min)
         now = m1.kickoff_utc + timedelta(minutes=140)
@@ -98,7 +105,7 @@ class ReproTests(unittest.TestCase):
             r = real_next(ms, now=pinned_now)
             log.warning("next_match called with ms=%s, now=%s -> %s", [(m.team1, m.team2) for m in ms], pinned_now, r)
             return r
-        with _patch_fetch([m1, m2]), patch("bot.wc2026.current_match", _patch_now(now)), patch("bot.wc2026.next_match", _wrap_next):
+        with _patch_fetch([m1, m2]), _patch_status_time(now), patch("bot.wc2026.next_match", _wrap_next):
             asyncio.run(client._refresh_once())
         log.warning("TICK3: ch.status=%r, edits=%s, _last_label=%r", ch.status, ch.edits, client._last_label)
 
