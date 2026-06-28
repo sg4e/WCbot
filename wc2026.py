@@ -260,14 +260,14 @@ def fetch_matches(url: str = DEFAULT_MATCHES_URL, timeout: float = 15.0) -> list
     return matches
 
 
-def current_match(
+def live_matches(
     matches: list[Match],
     *,
     now: Optional[datetime] = None,
     live_window_minutes: int = 130,
     extra_time_minutes: int = 0,
-) -> Optional[Match]:
-    """Return the match being played at `now`, or None if none is live.
+) -> list[Match]:
+    """Return all matches being played at `now`, sorted by kickoff time.
 
     A match is "live" between its kickoff and kickoff + its window, where
     the window is `live_window_minutes` for group-stage matches and
@@ -288,11 +288,44 @@ def current_match(
         )
         if m.kickoff_utc <= now <= m.kickoff_utc + window:
             live.append(m)
-    if not live:
-        return None
-    # If two matches overlap (different time zones), prefer the one that
-    # started most recently — the one kicking off now is the "headline" match.
-    return max(live, key=lambda m: m.kickoff_utc)
+    return sorted(live, key=lambda m: m.kickoff_utc)
+
+
+def overlapping_matches(
+    matches: list[Match],
+    *,
+    threshold_minutes: int = 15,
+) -> list[Match]:
+    """Return the initial block of matches overlapping the first match.
+
+    This is used for compact multi-match status labels when concurrent
+    matches kick off within the overlap threshold.
+    """
+    if not matches:
+        return []
+    ordered = sorted(matches, key=lambda m: m.kickoff_utc)
+    first = ordered[0]
+    return [m for m in ordered if overlaps(first, m, threshold_minutes=threshold_minutes)]
+
+
+def current_match(
+    matches: list[Match],
+    *,
+    now: Optional[datetime] = None,
+    live_window_minutes: int = 130,
+    extra_time_minutes: int = 0,
+) -> Optional[Match]:
+    """Return the match being played at `now`, or None if none is live.
+
+    If multiple matches are live, prefer the one that started most recently.
+    """
+    live = live_matches(
+        matches,
+        now=now,
+        live_window_minutes=live_window_minutes,
+        extra_time_minutes=extra_time_minutes,
+    )
+    return live[-1] if live else None
 
 
 def _is_knockout(m: Match) -> bool:
@@ -311,7 +344,14 @@ def next_match(
     matches: list[Match], now: Optional[datetime] = None
 ) -> Optional[Match]:
     """Return the next match scheduled to start after `now` (debug helper)."""
+    upcoming = upcoming_matches(matches, now=now)
+    return upcoming[0] if upcoming else None
+
+
+def upcoming_matches(
+    matches: list[Match], now: Optional[datetime] = None
+) -> list[Match]:
+    """Return matches scheduled to start after `now`, sorted by kickoff."""
     if now is None:
         now = datetime.now(timezone.utc)
-    upcoming = [m for m in matches if m.kickoff_utc > now]
-    return upcoming[0] if upcoming else None
+    return [m for m in matches if m.kickoff_utc > now]
